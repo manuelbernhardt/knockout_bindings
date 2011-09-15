@@ -154,41 +154,65 @@ ko.bindingHandlers.jqAccordion = {
  *  http://www.erichynds.com/jquery/jquery-ui-multiselect-widget/
 */
 ko.bindingHandlers.jqMultiSelect = {
-    init: function(element, valueAccessor,allBindingsAccessor,viewModel) {
+    init: function(element, valueAccessor, allBindingsAccessor, viewModel) {
         var defaults = {
-            click: function(event,ui) {
-                var selected_options = $.map($(element).multiselect("getChecked"),function(a) {return $(a).val()});
+            click: function(event, ui) {
+                var selected_options = $.map($(element).multiselect("getChecked"), function(a) {
+                    return $(a).val()
+                });
                 allBindingsAccessor()['selectedOptions'](selected_options);
             }
         };
-        var options = $.extend(defaults,valueAccessor());
+        var options = $.extend(defaults, valueAccessor());
+
+        var selected = allBindingsAccessor()['selectedOptions']();
+        var available = allBindingsAccessor()['options']();
+        var optionsText = allBindingsAccessor()['optionsText'];
+        var optionsValue = allBindingsAccessor()['optionsValue'];
+
+        $.each(selected, function(index, el) {
+            var option = $.grep(available, function(e, index) {
+                return (typeof e[optionsValue] === 'function' ? e[optionsValue]() : e[optionsValue]) == el
+            });
+            var optionText = (option[0])[optionsText];
+            $(element).append("<option value='" + el + "'>" + optionText + "</option>");
+        });
+
         allBindingsAccessor()['options'].subscribe(function(value) {
-            ko.bindingHandlers.jqMultiSelect.regenerateMultiselect(element,options,viewModel);
+            ko.bindingHandlers.jqMultiSelect.regenerateMultiselect(element, options, viewModel);
         });
         allBindingsAccessor()['selectedOptions'].subscribe(function(value) {
-            ko.bindingHandlers.jqMultiSelect.regenerateMultiselect(element,options,viewModel);
+            ko.bindingHandlers.jqMultiSelect.regenerateMultiselect(element, options, viewModel);
         });
     },
-    regenerateMultiselect: function(element,options,viewModel) {
-        if($(element).next().hasClass("ui-multiselect")) {
+    update: function (element, valueAccessor, allBindingsAccessor, context) {
+        ko.bindingHandlers.jqMultiSelect.regenerateMultiselect(element, null, context);
+    },
+    regenerateMultiselect: function(element, options, viewModel) {
+        if ($(element).next().hasClass("ui-multiselect")) {
             setTimeout(function() {
-                return $(element).multiselect("refresh").multiselectfilter({
-                        label: options['filterLabel'] || "Search: "
-                    });;
+                if ($(element).multiselect('option', 'filter') === true) {
+                    return $(element).multiselect("refresh").multiselectfilter({
+                        label: $(element).multiselect('option', 'filterLabel') || "Search: "
+                    });
+                } else {
+                    return $(element).multiselect("refresh");
+                }
             }, 0);
         } else {
             setTimeout(function() {
-                if(options['filter'] === true) {
+                if ($(element).multiselect('option', 'filter') === true) {
                     $(element).multiselect(options).multiselectfilter({
-                        label: options['filterLabel'] || "Search: "
+                        label: $(element).multiselect('option', 'filterLabel') || "Search: "
                     });
                 } else {
                     $(element).multiselect(options);
+                    $(element).multiselect('close');
                 }
-                if(options['noChecks'] === true) {
+                if ($(element).multiselect('option', 'noChecks') === true) {
                     $(element).next().next().find(".ui-helper-reset:first").remove();
                 }
-            },0);
+            }, 0);
         }
     }
 };
